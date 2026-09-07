@@ -1,0 +1,70 @@
+name: Build SentraMatrix
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ESP8266 Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Prepare firmware artifact
+        run: |
+          mkdir -p release
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            cp .pio/build/nodemcuv2/firmware.bin \
+              "release/SentraMatrix-${GITHUB_REF_NAME}.bin"
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            cp .pio/build/nodemcuv2/firmware.bin \
+              "release/SentraMatrix-nodemcuv2-${SHORT_SHA}.bin"
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SentraMatrix-firmware
+          path: release/*.bin
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.bin
+          generate_release_notes: true
