@@ -4,7 +4,7 @@
 
 **Open-source ESP8266 LED matrix clock and smart display controller**
 
-[![Build Status](https://github.com/souravjana96/SentraClock/actions/workflows/build.yml/badge.svg)](https://github.com/souravjana96/SentraClock/actions/workflows/build.yml)
+[![Build Status](https://github.com/souravj96/SentraMatrix/actions/workflows/build.yml/badge.svg)](https://github.com/souravj96/SentraMatrix/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: ESP8266](https://img.shields.io/badge/Platform-ESP8266-blue.svg)](https://www.espressif.com/en/products/socs/esp8266)
 [![Framework: Arduino](https://img.shields.io/badge/Framework-Arduino-teal.svg)](https://www.arduino.cc/)
