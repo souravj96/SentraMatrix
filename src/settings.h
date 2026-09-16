@@ -38,7 +38,8 @@ struct Settings
     char mqttPubTopic[65];
     uint16_t mqttPubInterval;
 
-    uint8_t reserved[16];
+    uint8_t useHADiscovery;
+    uint8_t reserved[15];
 };
 
 extern Settings settings;
