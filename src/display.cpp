@@ -171,3 +171,10 @@ void displaySetBrightness(uint8_t brightness)
     display->setIntensity(brightness);
 }
 
+void displaySetPower(bool on)
+{
+    if (display == nullptr) return;
+    display->displayShutdown(!on);
+}
+
+

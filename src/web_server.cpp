@@ -320,7 +320,10 @@ String makeHomePage()
 
     html += "Brightness: ";
     html += String(settings.brightness);
-    html += " / 15";
+    html += " / 15<br>";
+
+    html += "Quiet Hours: ";
+    html += settings.quietHoursEnabled ? "Enabled (" + String(settings.quietStartHour) + ":00 - " + String(settings.quietEndHour) + ":00)" : "Disabled";
 
     html += "</div>";
 
@@ -576,6 +579,27 @@ String makeHardwarePage()
     html += String(settings.brightness);
 
     html += "'>";
+
+    // --------------------------------------------------------
+    // QUIET HOURS
+    // --------------------------------------------------------
+
+    html += "<br><br><h3>Quiet Hours</h3>";
+
+    html += "<label>Quiet Hours</label>";
+    html += "<select name='quietEnabled'>";
+    html += "<option value='1'" + String(settings.quietHoursEnabled ? " selected" : "") + ">Enabled</option>";
+    html += "<option value='0'" + String(!settings.quietHoursEnabled ? " selected" : "") + ">Disabled</option>";
+    html += "</select>";
+
+    html += "<label>Start Hour (0-23)</label>";
+    html += "<input type='number' name='quietStart' min='0' max='23' value='" + String(settings.quietStartHour) + "'>";
+
+    html += "<label>End Hour (0-23)</label>";
+    html += "<input type='number' name='quietEnd' min='0' max='23' value='" + String(settings.quietEndHour) + "'>";
+
+    html += "<label>Quiet Brightness (0 = Display Off, 1-15 = Dim)</label>";
+    html += "<input type='number' name='quietBrightness' min='0' max='15' value='" + String(settings.quietBrightness) + "'>";
 
     html += "<button type='submit'>Save & Restart</button>";
 
@@ -1248,6 +1272,18 @@ void handleSave()
     }
     if (server.hasArg("useHADiscovery")) {
         settings.useHADiscovery = server.arg("useHADiscovery").toInt();
+    }
+    if (server.hasArg("quietEnabled")) {
+        settings.quietHoursEnabled = server.arg("quietEnabled").toInt();
+    }
+    if (server.hasArg("quietStart")) {
+        settings.quietStartHour = server.arg("quietStart").toInt();
+    }
+    if (server.hasArg("quietEnd")) {
+        settings.quietEndHour = server.arg("quietEnd").toInt();
+    }
+    if (server.hasArg("quietBrightness")) {
+        settings.quietBrightness = server.arg("quietBrightness").toInt();
     }
 
     saveSettings();

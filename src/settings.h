@@ -39,7 +39,11 @@ struct Settings
     uint16_t mqttPubInterval;
 
     uint8_t useHADiscovery;
-    uint8_t reserved[15];
+    uint8_t quietHoursEnabled;
+    uint8_t quietStartHour;
+    uint8_t quietEndHour;
+    uint8_t quietBrightness;
+    uint8_t reserved[11];
 };
 
 extern Settings settings;
