@@ -40,7 +40,13 @@ void resetSettings()
     strncpy(settings.mqttSubTopic, "sentramatrix/message", sizeof(settings.mqttSubTopic) - 1);
     strncpy(settings.mqttPubTopic, "sentramatrix/status", sizeof(settings.mqttPubTopic) - 1);
     settings.mqttPubInterval = 60;
+    settings.useHADiscovery = 1;
 
+    // Quiet Hours defaults
+    settings.quietHoursEnabled = 0;
+    settings.quietStartHour = 22; // 10 PM
+    settings.quietEndHour = 7;    // 7 AM
+    settings.quietBrightness = 0; // 0 = Display Off
 }
 
 void loadSettings()
@@ -60,6 +66,13 @@ void loadSettings()
     else
     {
         Serial.println("Settings loaded from EEPROM.");
+
+        // Normalize if upgraded from previous version
+        if (settings.useHADiscovery > 1) settings.useHADiscovery = 1;
+        if (settings.quietHoursEnabled > 1) settings.quietHoursEnabled = 0;
+        if (settings.quietStartHour > 23) settings.quietStartHour = 22;
+        if (settings.quietEndHour > 23) settings.quietEndHour = 7;
+        if (settings.quietBrightness > 15) settings.quietBrightness = 0;
 
         Serial.println();
         Serial.println("----- Display Settings -----");

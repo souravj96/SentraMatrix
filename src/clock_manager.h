@@ -13,3 +13,5 @@ String getCurrentTime();
 String getCurrentDate();
 
 void clockShowMessage(const String& msg);
+
+bool isQuietHour();
