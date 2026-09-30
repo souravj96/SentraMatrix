@@ -40,6 +40,7 @@ void resetSettings()
     strncpy(settings.mqttSubTopic, "sentramatrix/message", sizeof(settings.mqttSubTopic) - 1);
     strncpy(settings.mqttPubTopic, "sentramatrix/status", sizeof(settings.mqttPubTopic) - 1);
     settings.mqttPubInterval = 60;
+    settings.useHADiscovery = 1;
 
 }
 
@@ -60,6 +61,12 @@ void loadSettings()
     else
     {
         Serial.println("Settings loaded from EEPROM.");
+
+        // Normalize useHADiscovery if upgraded from previous version
+        if (settings.useHADiscovery > 1)
+        {
+            settings.useHADiscovery = 1;
+        }
 
         Serial.println();
         Serial.println("----- Display Settings -----");

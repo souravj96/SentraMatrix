@@ -42,6 +42,7 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 | Time / timezone configuration | ✅ |
 | MQTT configuration | ✅ |
 | Persistent settings (EEPROM) | ✅ |
+| Home Assistant MQTT Auto-Discovery | ✅ |
 | GitHub Actions CI — build + release on tag | ✅ |
 
 ---
@@ -153,21 +154,34 @@ mosquitto_pub -h <broker-ip> -t "sentramatrix/message" -m "Hello!"
 
 ```json
 {
-  "uptime": 12345,
+  "status": "online",
   "ip": "192.168.1.50",
   "rssi": -67,
-  "heap": 28432
+  "heap": 28432,
+  "uptime": 12345,
+  "brightness": 5
 }
 ```
 
-### Home Assistant example
+### 🏠 Home Assistant MQTT Auto-Discovery
+
+SentraMatrix automatically registers itself in Home Assistant as a unified device via MQTT Discovery (`homeassistant/...`). No manual YAML configuration required!
+
+**Discovered Entities:**
+- **Display Message (`text`)**: Send custom messages directly from the HA UI or automation scripts.
+- **Brightness (`number`)**: Real-time slider (0–15) to dynamically adjust LED matrix intensity.
+- **Restart (`button`)**: Reboot the device remotely from Home Assistant.
+- **Sensors (`sensor`)**: Real-time WiFi Signal (RSSI), IP Address, Free Memory (Heap), and Uptime.
+- **Availability (LWT)**: Automatic online/offline status reporting via MQTT Last Will and Testament.
+
+#### Sending messages via Home Assistant Automations
 
 ```yaml
-# Send a notification to the display
+# Send an alert to SentraMatrix
 action: mqtt.publish
 data:
   topic: sentramatrix/message
-  payload: "Door open!"
+  payload: "Door opened!"
 ```
 
 ---
@@ -292,6 +306,7 @@ SentraMatrix is designed for **local network use only**.
 - Boot display sequence (IP, NTP, MQTT status)
 - Dark web configuration UI (Hardware / WiFi / Time / MQTT)
 - Persistent EEPROM settings
+- Home Assistant MQTT Auto-Discovery
 - GitHub Actions CI + Release
 
 ### 🔮 Future Ideas
@@ -303,7 +318,6 @@ SentraMatrix is designed for **local network use only**.
 - Multiple display zones
 - Scheduled messages
 - Sensor integration (temperature, humidity)
-- Home Assistant MQTT discovery
 - Mobile-optimized UI
 - Custom scroll speed per message
 
