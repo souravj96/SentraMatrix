@@ -34,6 +34,26 @@ static String getRestartCommandTopic()
     return String(settings.mqttPubTopic) + "/restart";
 }
 
+static String getQuietHoursCommandTopic()
+{
+    return String(settings.mqttPubTopic) + "/quiet_hours/set";
+}
+
+static String getQuietStartCommandTopic()
+{
+    return String(settings.mqttPubTopic) + "/quiet_start/set";
+}
+
+static String getQuietEndCommandTopic()
+{
+    return String(settings.mqttPubTopic) + "/quiet_end/set";
+}
+
+static String getQuietBrightnessCommandTopic()
+{
+    return String(settings.mqttPubTopic) + "/quiet_brightness/set";
+}
+
 void mqttCallback(char* topic, byte* payload, unsigned int length)
 {
     String msg = "";
@@ -72,6 +92,43 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
         Serial.println("MQTT restart command received. Restarting...");
         delay(300);
         ESP.restart();
+    }
+    // Quiet hours toggle
+    else if (topicStr == getQuietHoursCommandTopic())
+    {
+        settings.quietHoursEnabled = (msg.equalsIgnoreCase("ON") || msg == "1");
+        saveSettings();
+        mqttPublishStatus();
+    }
+    // Quiet start hour
+    else if (topicStr == getQuietStartCommandTopic())
+    {
+        int val = msg.toInt();
+        if (val >= 0 && val <= 23) {
+            settings.quietStartHour = val;
+            saveSettings();
+            mqttPublishStatus();
+        }
+    }
+    // Quiet end hour
+    else if (topicStr == getQuietEndCommandTopic())
+    {
+        int val = msg.toInt();
+        if (val >= 0 && val <= 23) {
+            settings.quietEndHour = val;
+            saveSettings();
+            mqttPublishStatus();
+        }
+    }
+    // Quiet brightness
+    else if (topicStr == getQuietBrightnessCommandTopic())
+    {
+        int val = msg.toInt();
+        if (val >= 0 && val <= 15) {
+            settings.quietBrightness = val;
+            saveSettings();
+            mqttPublishStatus();
+        }
     }
 }
 
@@ -216,6 +273,82 @@ void mqttPublishDiscovery()
         }
     }
 
+    // 5. Quiet Hours Entities
+    if (String(settings.mqttPubTopic).length() > 0)
+    {
+        // Quiet Hours Switch
+        {
+            String topic = "homeassistant/switch/" + devId + "/quiet_hours/config";
+            String payload = "{"
+                "\"name\":\"Quiet Hours\","
+                "\"uniq_id\":\"" + devId + "_quiet_hours\","
+                "\"cmd_t\":\"" + getQuietHoursCommandTopic() + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.quiet_hours }}\","
+                "\"pl_on\":\"ON\","
+                "\"pl_off\":\"OFF\","
+                "\"icon\":\"mdi:sleep\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Quiet Start Hour
+        {
+            String topic = "homeassistant/number/" + devId + "/quiet_start/config";
+            String payload = "{"
+                "\"name\":\"Quiet Start Hour\","
+                "\"uniq_id\":\"" + devId + "_quiet_start\","
+                "\"cmd_t\":\"" + getQuietStartCommandTopic() + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.quiet_start }}\","
+                "\"min\":0,\"max\":23,\"step\":1,"
+                "\"icon\":\"mdi:clock-start\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Quiet End Hour
+        {
+            String topic = "homeassistant/number/" + devId + "/quiet_end/config";
+            String payload = "{"
+                "\"name\":\"Quiet End Hour\","
+                "\"uniq_id\":\"" + devId + "_quiet_end\","
+                "\"cmd_t\":\"" + getQuietEndCommandTopic() + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.quiet_end }}\","
+                "\"min\":0,\"max\":23,\"step\":1,"
+                "\"icon\":\"mdi:clock-end\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Quiet Brightness
+        {
+            String topic = "homeassistant/number/" + devId + "/quiet_brightness/config";
+            String payload = "{"
+                "\"name\":\"Quiet Brightness\","
+                "\"uniq_id\":\"" + devId + "_quiet_brightness\","
+                "\"cmd_t\":\"" + getQuietBrightnessCommandTopic() + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.quiet_brightness }}\","
+                "\"min\":0,\"max\":15,\"step\":1,"
+                "\"icon\":\"mdi:brightness-4\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+    }
+
     Serial.println("Home Assistant MQTT discovery published.");
 }
 
@@ -282,6 +415,12 @@ bool mqttReconnect()
         Serial.print("Subscribed to ");
         Serial.println(restartCmd);
 
+        // Subscribe to quiet hours command topics
+        mqttClient.subscribe(getQuietHoursCommandTopic().c_str());
+        mqttClient.subscribe(getQuietStartCommandTopic().c_str());
+        mqttClient.subscribe(getQuietEndCommandTopic().c_str());
+        mqttClient.subscribe(getQuietBrightnessCommandTopic().c_str());
+
         // Home Assistant Discovery
         if (settings.useHADiscovery)
         {
@@ -338,7 +477,11 @@ void mqttPublishStatus()
     payload += "\"rssi\":" + String(WiFi.RSSI()) + ",";
     payload += "\"heap\":" + String(ESP.getFreeHeap()) + ",";
     payload += "\"uptime\":" + String(millis() / 1000) + ",";
-    payload += "\"brightness\":" + String(settings.brightness);
+    payload += "\"brightness\":" + String(settings.brightness) + ",";
+    payload += "\"quiet_hours\":\"" + String(settings.quietHoursEnabled ? "ON" : "OFF") + "\",";
+    payload += "\"quiet_start\":" + String(settings.quietStartHour) + ",";
+    payload += "\"quiet_end\":" + String(settings.quietEndHour) + ",";
+    payload += "\"quiet_brightness\":" + String(settings.quietBrightness);
     payload += "}";
 
     mqttClient.publish(settings.mqttPubTopic, payload.c_str());

@@ -11,3 +11,4 @@ void displayClear();
 void displayLoop();
 bool displayIsAnimationFinished();
 void displaySetBrightness(uint8_t brightness);
+void displaySetPower(bool on);
