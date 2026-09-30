@@ -349,6 +349,10 @@ String makeHomePage()
         html += "Status: <span class='status-bad'>Disconnected</span><br>";
         html += "Broker: " + String(settings.mqttBroker);
     }
+    if (settings.useMQTT)
+    {
+        html += "<br>HA Discovery: " + String(settings.useHADiscovery ? "Enabled" : "Disabled");
+    }
     html += "</div>";
 
     // --------------------------------------------------------
@@ -933,6 +937,13 @@ String makeMQTTPage()
     // Pub Interval
     html += "<label>Publish Interval (Seconds)</label>";
     html += "<input type='number' name='mqttPubInterval' value='" + String(settings.mqttPubInterval) + "'>";
+
+    // Home Assistant Discovery
+    html += "<label>Home Assistant MQTT Discovery</label>";
+    html += "<select name='useHADiscovery'>";
+    html += "<option value='1' " + String(settings.useHADiscovery ? "selected" : "") + ">Enabled</option>";
+    html += "<option value='0' " + String(!settings.useHADiscovery ? "selected" : "") + ">Disabled</option>";
+    html += "</select>";
 
     html += "<br><button type='submit'>Save MQTT Settings</button>";
     html += "</form>";

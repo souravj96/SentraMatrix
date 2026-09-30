@@ -40,6 +40,7 @@ void resetSettings()
     strncpy(settings.mqttSubTopic, "sentramatrix/message", sizeof(settings.mqttSubTopic) - 1);
     strncpy(settings.mqttPubTopic, "sentramatrix/status", sizeof(settings.mqttPubTopic) - 1);
     settings.mqttPubInterval = 60;
+    settings.useHADiscovery = 1;
 
     // Quiet Hours defaults
     settings.quietHoursEnabled = 0;

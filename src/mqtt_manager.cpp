@@ -362,6 +362,7 @@ bool mqttReconnect()
     Serial.print(settings.mqttBroker);
     Serial.print("...");
 
+    String availTopic = getAvailabilityTopic();
     bool connected = false;
 
     if (String(settings.mqttUser) != "")
@@ -369,18 +370,32 @@ bool mqttReconnect()
         connected = mqttClient.connect(
             settings.mqttClientId,
             settings.mqttUser,
-            settings.mqttPassword
+            settings.mqttPassword,
+            availTopic.c_str(),
+            0,
+            true,
+            "offline"
         );
     }
     else
     {
-        connected = mqttClient.connect(settings.mqttClientId);
+        connected = mqttClient.connect(
+            settings.mqttClientId,
+            availTopic.c_str(),
+            0,
+            true,
+            "offline"
+        );
     }
 
     if (connected)
     {
         Serial.println(" connected!");
 
+        // Publish online availability
+        mqttClient.publish(availTopic.c_str(), "online", true);
+
+        // Subscribe to text message topic
         if (String(settings.mqttSubTopic) != "")
         {
             mqttClient.subscribe(settings.mqttSubTopic);
@@ -441,6 +456,7 @@ void mqttInit()
     Serial.println();
     Serial.println("Initializing MQTT...");
 
+    mqttClient.setBufferSize(1024);
     mqttClient.setServer(settings.mqttBroker, settings.mqttPort);
     mqttClient.setCallback(mqttCallback);
     
@@ -513,3 +529,4 @@ bool mqttIsConnected()
 {
     return mqttClient.connected();
 }
+
