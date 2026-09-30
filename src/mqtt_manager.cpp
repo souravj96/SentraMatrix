@@ -6,6 +6,7 @@
 #include "config.h"
 #include "settings.h"
 #include "clock_manager.h"
+#include "display.h"
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -66,8 +67,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     Serial.print("]: ");
     Serial.println(msg);
 
+    String topicStr = String(topic);
+
     // Integrate with display
-    if (String(topic) == settings.mqttSubTopic)
+    if (topicStr == settings.mqttSubTopic)
     {
         clockShowMessage(msg);
     }

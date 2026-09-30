@@ -42,6 +42,8 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 | Time / timezone configuration | ✅ |
 | MQTT configuration | ✅ |
 | Persistent settings (EEPROM) | ✅ |
+| Home Assistant MQTT Auto-Discovery | ✅ |
+| Quiet Hours / Night Mode | ✅ |
 | GitHub Actions CI — build + release on tag | ✅ |
 
 ---
@@ -120,7 +122,7 @@ Open a browser and navigate to the device IP address shown on boot.
 | Page | Path | Description |
 |---|---|---|
 | Home | `/` | Device, WiFi, Display, MQTT status |
-| Hardware | `/hardware` | Pins, module count, brightness |
+| Hardware | `/hardware` | Pins, module count, brightness, Quiet Hours |
 | WiFi | `/wifi` | Scan, connect, AP settings |
 | Time | `/time` | NTP, timezone, 12/24hr, date format |
 | MQTT | `/mqtt` | Broker, topics, credentials |
@@ -153,22 +155,56 @@ mosquitto_pub -h <broker-ip> -t "sentramatrix/message" -m "Hello!"
 
 ```json
 {
-  "uptime": 12345,
+  "status": "online",
   "ip": "192.168.1.50",
   "rssi": -67,
-  "heap": 28432
+  "heap": 28432,
+  "uptime": 12345,
+  "brightness": 5,
+  "quiet_hours": "ON",
+  "quiet_start": 22,
+  "quiet_end": 7,
+  "quiet_brightness": 0
 }
 ```
 
-### Home Assistant example
+### 🏠 Home Assistant MQTT Auto-Discovery
+
+SentraMatrix automatically registers itself in Home Assistant as a unified device via MQTT Discovery (`homeassistant/...`). No manual YAML configuration required!
+
+**Discovered Entities:**
+- **Display Message (`text`)**: Send custom messages directly from the HA UI or automation scripts.
+- **Brightness (`number`)**: Real-time slider (0–15) to dynamically adjust LED matrix intensity.
+- **Quiet Hours (`switch`)**: Toggle quiet hours mode on/off.
+- **Quiet Start Hour (`number`)**: Start hour (0–23, e.g. `22` for 10 PM).
+- **Quiet End Hour (`number`)**: End hour (0–23, e.g. `7` for 7 AM).
+- **Quiet Brightness (`number`)**: Night brightness level (0 = Display completely powered off, 1–15 = Dim).
+- **Restart (`button`)**: Reboot the device remotely from Home Assistant.
+- **Sensors (`sensor`)**: Real-time WiFi Signal (RSSI), IP Address, Free Memory (Heap), and Uptime.
+- **Availability (LWT)**: Automatic online/offline status reporting via MQTT Last Will and Testament.
+
+#### Sending messages via Home Assistant Automations
 
 ```yaml
-# Send a notification to the display
+# Send an alert to SentraMatrix
 action: mqtt.publish
 data:
   topic: sentramatrix/message
-  payload: "Door open!"
+  payload: "Door opened!"
 ```
+
+---
+
+## 🌙 Quiet Hours / Night Mode
+
+Quiet Hours allows you to dim or completely power down the matrix during sleeping hours, configurable from both the **Web UI (`/hardware`)** and **Home Assistant**.
+
+### Key Behaviors:
+- **Time Span Support**: Seamlessly handles overnight schedules spanning past midnight (e.g. Start: `22` / 10 PM → End: `07` / 7 AM).
+- **Zero Light Emission (Brightness = 0)**: Uses hardware `displayShutdown(true)` to power down the MAX7219 modules so LEDs emit zero light in a dark bedroom.
+- **Dimmed Display (Brightness > 0)**: Keeps the clock readable at a gentle, non-distracting intensity level.
+- **Suppressed Minute Animations**: Disables the periodic date/day marquee scroll during quiet hours so motion doesn't distract.
+- **Wake on Incoming Message**: If an MQTT message arrives during quiet hours, the display temporarily wakes up, scrolls the text, and returns to sleep/dim mode once finished.
 
 ---
 
@@ -292,6 +328,8 @@ SentraMatrix is designed for **local network use only**.
 - Boot display sequence (IP, NTP, MQTT status)
 - Dark web configuration UI (Hardware / WiFi / Time / MQTT)
 - Persistent EEPROM settings
+- Home Assistant MQTT Auto-Discovery
+- Quiet Hours / Night Mode (Web UI & Home Assistant)
 - GitHub Actions CI + Release
 
 ### 🔮 Future Ideas
@@ -303,7 +341,6 @@ SentraMatrix is designed for **local network use only**.
 - Multiple display zones
 - Scheduled messages
 - Sensor integration (temperature, humidity)
-- Home Assistant MQTT discovery
 - Mobile-optimized UI
 - Custom scroll speed per message
 
