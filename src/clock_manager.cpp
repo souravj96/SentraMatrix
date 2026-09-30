@@ -178,6 +178,20 @@ String getCurrentDay()
     return String(buffer);
 }
 
+bool isQuietHour()
+{
+    if (!settings.quietHoursEnabled) return false;
+    time_t now = time(nullptr);
+    if (now < 1700000000) return false;
+    struct tm* t = localtime(&now);
+    int h = t->tm_hour;
+    if (settings.quietStartHour == settings.quietEndHour) return false;
+    if (settings.quietStartHour < settings.quietEndHour)
+        return (h >= settings.quietStartHour && h < settings.quietEndHour);
+    else
+        return (h >= settings.quietStartHour || h < settings.quietEndHour);
+}
+
 // ============================================================
 // CLOCK UPDATE
 // ============================================================
@@ -191,15 +205,47 @@ void clockUpdate()
     int currentSecond = timeinfo->tm_sec;
     int currentMinute = timeinfo->tm_min;
 
+    static bool inQuietState = false;
+    bool quiet = isQuietHour();
+    if (quiet != inQuietState)
+    {
+        inQuietState = quiet;
+        if (inQuietState)
+        {
+            if (settings.quietBrightness == 0)
+                displaySetPower(false);
+            else
+                displaySetBrightness(settings.quietBrightness);
+        }
+        else
+        {
+            displaySetPower(true);
+            displaySetBrightness(settings.brightness);
+            lastSecond = -1;
+        }
+    }
+
     if (currentState == STATE_MESSAGE)
     {
         if (displayIsAnimationFinished())
         {
             currentState = STATE_CLOCK;
-            currentTime = getCurrentTime();
-            displayClock(currentTime.c_str(), PA_SCROLL_UP, PA_SCROLL_UP);
+            if (inQuietState && settings.quietBrightness == 0)
+            {
+                displaySetPower(false);
+            }
+            else
+            {
+                currentTime = getCurrentTime();
+                displayClock(currentTime.c_str(), PA_SCROLL_UP, PA_SCROLL_UP);
+            }
             lastSecond = currentSecond;
         }
+        return;
+    }
+
+    if (inQuietState && settings.quietBrightness == 0)
+    {
         return;
     }
 
@@ -238,10 +284,19 @@ void clockUpdate()
     if (currentMinute != lastMinute)
     {
         lastMinute = currentMinute;
-        currentState = STATE_DAY;
-        currentDay = getCurrentDay();
-        displayDate(currentDay.c_str());
-        return;
+        if (!inQuietState)
+        {
+            currentState = STATE_DAY;
+            currentDay = getCurrentDay();
+            displayDate(currentDay.c_str());
+            return;
+        }
+        else
+        {
+            currentTime = getCurrentTime();
+            displayClock(currentTime.c_str(), PA_PRINT, PA_NO_EFFECT);
+            return;
+        }
     }
 
     if (currentSecond != lastSecond)
@@ -258,5 +313,6 @@ void clockShowMessage(const String& msg)
 {
     currentState = STATE_MESSAGE;
     currentMessage = msg;
-    displayDate(currentMessage.c_str()); // use displayDate logic for now (scrolling)
+    displaySetPower(true);
+    displayDate(currentMessage.c_str());
 }

@@ -163,3 +163,18 @@ bool displayIsAnimationFinished()
     // MD_Parola's getZoneStatus() can check if animation is complete
     return display->getZoneStatus(0);
 }
+
+void displaySetBrightness(uint8_t brightness)
+{
+    if (display == nullptr) return;
+    if (brightness > 15) brightness = 15;
+    display->setIntensity(brightness);
+}
+
+void displaySetPower(bool on)
+{
+    if (display == nullptr) return;
+    display->displayShutdown(!on);
+}
+
+
