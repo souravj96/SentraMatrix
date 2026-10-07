@@ -1,8 +1,13 @@
 #include "web_server.h"
 
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <ESP8266WiFi.h>
+#ifdef ESP32
+  #include <WebServer.h>
+  #include <WiFi.h>
+#else
+  #include <ESP8266WebServer.h>
+  #include <ESP8266WiFi.h>
+  using WebServer = ESP8266WebServer;
+#endif
 #include <MD_MAX72xx.h>
 #include <WiFiManager.h>
 
@@ -14,8 +19,13 @@
 #include "effects.h"
 #include "ota_manager.h"
 
+#ifdef ESP32
+WebServer server(80);
+#else
 ESP8266WebServer server(80);
+#include <ESP8266HTTPUpdateServer.h>
 ESP8266HTTPUpdateServer httpUpdater;
+#endif
 
 // ============================================================
 // EFFECT SELECT
@@ -400,13 +410,16 @@ String makeHomePage()
     // --------------------------------------------------------
 
     html += "<div class='section'>";
-
     html += "<h2>Hardware Pins</h2>";
-
+#ifdef ESP32
+    html += "DIN: GPIO23<br>";
+    html += "CLK: GPIO18<br>";
+    html += "CS: GPIO5";
+#else
     html += "DIN: D7 / GPIO13<br>";
     html += "CLK: D5 / GPIO14<br>";
     html += "CS: D4 / GPIO2";
-
+#endif
     html += "</div>";
 
     html += makeFooter();
@@ -441,6 +454,39 @@ String makeHardwarePage()
 
     html += "<select name='dataPin'>";
 
+#ifdef ESP32
+    const char* pinNames[] =
+    {
+        "GPIO2",
+        "GPIO4",
+        "GPIO5 (VSPI CS)",
+        "GPIO12",
+        "GPIO13",
+        "GPIO14",
+        "GPIO15",
+        "GPIO16",
+        "GPIO17",
+        "GPIO18 (VSPI CLK)",
+        "GPIO19",
+        "GPIO21",
+        "GPIO22",
+        "GPIO23 (VSPI DIN)",
+        "GPIO25",
+        "GPIO26",
+        "GPIO27",
+        "GPIO32",
+        "GPIO33"
+    };
+
+    const uint8_t pinValues[] =
+    {
+        2, 4, 5, 12, 13, 14, 15,
+        16, 17, 18, 19, 21, 22,
+        23, 25, 26, 27, 32, 33
+    };
+
+    const int numPins = sizeof(pinValues) / sizeof(pinValues[0]);
+#else
     const char* pinNames[] =
     {
         "D0",
@@ -467,7 +513,10 @@ String makeHardwarePage()
         D8
     };
 
-    for (int i = 0; i < 9; i++)
+    const int numPins = 9;
+#endif
+
+    for (int i = 0; i < numPins; i++)
     {
         html += "<option value='";
         html += String(pinValues[i]);
@@ -490,7 +539,7 @@ String makeHardwarePage()
 
     html += "<select name='clkPin'>";
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < numPins; i++)
     {
         html += "<option value='";
         html += String(pinValues[i]);
@@ -513,7 +562,7 @@ String makeHardwarePage()
 
     html += "<select name='csPin'>";
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < numPins; i++)
     {
         html += "<option value='";
         html += String(pinValues[i]);
@@ -691,15 +740,18 @@ String makeHardwarePage()
     // --------------------------------------------------------
 
     html += "<div class='section'>";
-
     html += "<h2>Current Wiring</h2>";
-
+#ifdef ESP32
+    html += "DIN -> GPIO23<br>";
+    html += "CLK -> GPIO18<br>";
+    html += "CS -> GPIO5<br>";
+#else
     html += "DIN -> D7 / GPIO13<br>";
     html += "CLK -> D5 / GPIO14<br>";
     html += "CS -> D4 / GPIO2<br>";
+#endif
     html += "VCC -> 5V<br>";
     html += "GND -> GND";
-
     html += "</div>";
 
     html += makeFooter();
@@ -1511,6 +1563,7 @@ void webServerInit()
     );
 
     // Firmware upload page (GET form + POST upload) at OTA_HTTP_PATH
+#ifndef ESP32
     if (strlen(settings.otaPassword) > 0)
     {
         httpUpdater.setup(&server, OTA_HTTP_PATH, OTA_HTTP_USER, settings.otaPassword);
@@ -1519,6 +1572,7 @@ void webServerInit()
     {
         httpUpdater.setup(&server, OTA_HTTP_PATH);
     }
+#endif
 
     server.begin();
 
