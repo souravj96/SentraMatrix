@@ -2,11 +2,12 @@
 
 # SentraMatrix
 
-**Open-source ESP8266 LED matrix clock and smart display controller**
+**Open-source ESP8266 & ESP32 LED matrix clock and smart display controller**
 
 [![Build Status](https://github.com/souravj96/SentraMatrix/actions/workflows/build.yml/badge.svg)](https://github.com/souravj96/SentraMatrix/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: ESP8266](https://img.shields.io/badge/Platform-ESP8266-blue.svg)](https://www.espressif.com/en/products/socs/esp8266)
+[![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-red.svg)](https://www.espressif.com/en/products/socs/esp32)
 [![Framework: Arduino](https://img.shields.io/badge/Framework-Arduino-teal.svg)](https://www.arduino.cc/)
 [![PlatformIO](https://img.shields.io/badge/Built%20with-PlatformIO-orange.svg)](https://platformio.org/)
 
@@ -16,7 +17,7 @@
 
 ## 📖 Overview
 
-SentraMatrix is a fully configurable LED matrix clock and smart display controller built on the **ESP8266 NodeMCU** and **MAX7219** LED matrix modules.
+SentraMatrix is a fully configurable LED matrix clock and smart display controller built on **ESP8266 NodeMCU** and **ESP32** with **MAX7219** LED matrix modules.
 
 It combines an NTP-synchronized clock, scrolling date/day display, MQTT text message integration, and a complete browser-based configuration UI — all without any cloud dependency.
 
@@ -26,6 +27,7 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 
 | Feature | Status |
 |---|---|
+| Dual Platform Support (ESP8266 & ESP32) | ✅ |
 | NTP time synchronization | ✅ |
 | 12 / 24-hour clock display | ✅ |
 | Day name scrolling (every minute) | ✅ |
@@ -44,7 +46,7 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 | Persistent settings (EEPROM) | ✅ |
 | Home Assistant MQTT Auto-Discovery | ✅ |
 | Quiet Hours / Night Mode | ✅ |
-| GitHub Actions CI — build + release on tag | ✅ |
+| GitHub Actions CI — dual ESP8266 & ESP32 binary release | ✅ |
 
 ---
 
@@ -54,25 +56,39 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 
 | Component | Notes |
 |---|---|
-| ESP8266 NodeMCU v2 | Or any ESP8266 with SPI |
-| MAX7219 LED Matrix module(s) | ICSTATION or compatible |
-| 5V power supply | At least 2A for 4 modules |
+| ESP8266 NodeMCU v2 or ESP32 DevKit | Any ESP8266 / ESP32 board |
+| MAX7219 LED Matrix module(s) | ICSTATION or compatible (4 modules standard) |
+| 5V power supply | At least 2A recommended for 4 modules |
 
 ### Default Wiring
+
+#### ESP8266 NodeMCU v2
 
 | Signal | NodeMCU pin | GPIO |
 |---|---|---|
 | DIN (DATA) | D7 | GPIO13 |
 | CLK | D5 | GPIO14 |
 | CS | D4 | GPIO2 |
+| VCC | 5V / VIN | 5V |
+| GND | GND | GND |
+
+#### ESP32 DevKit (VSPI)
+
+| Signal | Pin | GPIO |
+|---|---|---|
+| DIN (DATA) | D23 / MOSI | GPIO23 |
+| CLK | D18 / SCK | GPIO18 |
+| CS | D5 / SS | GPIO5 |
+| VCC | 5V / VIN | 5V |
+| GND | GND | GND |
 
 > **Note:** Pins can be reconfigured via the Hardware page in the web UI.
 
-### Tested Configuration
+### Tested Configurations
 
 ```
-NodeMCU v2
-4× ICSTATION MAX7219 modules (32×8 matrix)
+- ESP8266 NodeMCU v2 + 4× ICSTATION MAX7219 modules (32×8 matrix)
+- ESP32-WROOM-32 DevKit + 4× ICSTATION MAX7219 modules (32×8 matrix)
 ```
 
 ---
@@ -90,13 +106,25 @@ NodeMCU v2
 ```bash
 git clone https://github.com/souravj96/SentraMatrix.git
 cd SentraClock
+
+# Build for ESP8266
+pio run -e nodemcuv2
+
+# Build for ESP32
+pio run -e esp32dev
+
+# Build both
 pio run
 ```
 
 ### Flash
 
 ```bash
-pio run --target upload
+# Flash ESP8266
+pio run -e nodemcuv2 --target upload
+
+# Flash ESP32
+pio run -e esp32dev --target upload
 ```
 
 Or use the PlatformIO IDE's **Upload** button.

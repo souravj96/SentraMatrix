@@ -1,6 +1,10 @@
 #include "mqtt_manager.h"
 
-#include <ESP8266WiFi.h>
+#ifdef ESP32
+  #include <WiFi.h>
+#else
+  #include <ESP8266WiFi.h>
+#endif
 #include <PubSubClient.h>
 
 #include "config.h"
@@ -16,7 +20,11 @@ static unsigned long lastPublishTime = 0;
 
 static String getDeviceId()
 {
+#ifdef ESP32
+    return "sentramatrix_" + String((uint32_t)ESP.getEfuseMac(), HEX);
+#else
     return "sentramatrix_" + String(ESP.getChipId(), HEX);
+#endif
 }
 
 static String getAvailabilityTopic()
@@ -141,7 +149,13 @@ void mqttPublishDiscovery()
     String devId = getDeviceId();
     String devName = (String(settings.mqttClientId).length() > 0) ? String(settings.mqttClientId) : "SentraMatrix";
     String cu = "http://" + WiFi.localIP().toString() + "/";
-    String devJson = "\"dev\":{\"ids\":[\"" + devId + "\"],\"name\":\"" + devName + "\",\"mf\":\"SentraMatrix\",\"mdl\":\"ESP8266 MAX7219 Clock\",\"sw\":\"1.0.0\",\"cu\":\"" + cu + "\"}";
+    String devJson = "\"dev\":{\"ids\":[\"" + devId + "\"],\"name\":\"" + devName + "\",\"mf\":\"SentraMatrix\","
+#ifdef ESP32
+                     "\"mdl\":\"ESP32 MAX7219 Clock\","
+#else
+                     "\"mdl\":\"ESP8266 MAX7219 Clock\","
+#endif
+                     "\"sw\":\"1.0.0\",\"cu\":\"" + cu + "\"}";
     String availTopic = getAvailabilityTopic();
     String availJson = "\"avty_t\":\"" + availTopic + "\",\"pl_avail\":\"online\",\"pl_not_avail\":\"offline\"";
 

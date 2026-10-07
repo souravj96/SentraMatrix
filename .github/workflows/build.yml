@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - "10-esp32-support"
     tags:
       - "v*"
   pull_request:
@@ -19,7 +20,6 @@ permissions:
 jobs:
   # ----------------------------------------------------------------
   # JOB: Determine version and whether to release
-  # Only runs on main push or tag push
   # ----------------------------------------------------------------
   version:
     name: Determine Version
@@ -86,14 +86,19 @@ jobs:
           echo "==> is_release=${IS_RELEASE}  new_tag=${NEW_TAG}  release_tag=${RELEASE_TAG}"
 
   # ----------------------------------------------------------------
-  # JOB: Build firmware
+  # JOB: Build firmware for both ESP8266 and ESP32
   # ----------------------------------------------------------------
   build:
-    name: Build ESP8266 Firmware
+    name: Build (${{ matrix.chip }})
     runs-on: ubuntu-latest
     needs: version
-    outputs:
-      artifact_name: ${{ steps.prep.outputs.artifact_name }}
+    strategy:
+      matrix:
+        include:
+          - env: nodemcuv2
+            chip: esp8266
+          - env: esp32dev
+            chip: esp32
 
     steps:
       - name: Checkout source
@@ -110,8 +115,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          key: ${{ runner.os }}-pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
           restore-keys: |
+            ${{ runner.os }}-pio-${{ matrix.env }}-
             ${{ runner.os }}-pio-
 
       - name: Install PlatformIO
@@ -119,10 +125,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Build firmware
-        run: pio run
+      - name: Build firmware (${{ matrix.chip }})
+        run: pio run -e ${{ matrix.env }}
 
-      - name: Prepare firmware artifact
+      - name: Prepare firmware binary
         id: prep
         shell: bash
         run: |
@@ -130,35 +136,34 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           IS_RELEASE="${{ needs.version.outputs.is_release }}"
           RELEASE_TAG="${{ needs.version.outputs.release_tag }}"
+          CHIP="${{ matrix.chip }}"
 
           if [[ "${IS_RELEASE}" == "true" && -n "${RELEASE_TAG}" ]]; then
-            BIN_NAME="SentraMatrix-${RELEASE_TAG}.bin"
-            ARTIFACT_NAME="SentraMatrix-firmware-${RELEASE_TAG}"
+            BIN_NAME="SentraMatrix-${RELEASE_TAG}-${CHIP}.bin"
           elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
             PR_NUM="${{ github.event.pull_request.number }}"
-            BIN_NAME="SentraMatrix-pr${PR_NUM}-${SHORT_SHA}.bin"
-            ARTIFACT_NAME="SentraMatrix-firmware-pr${PR_NUM}"
+            BIN_NAME="SentraMatrix-pr${PR_NUM}-${SHORT_SHA}-${CHIP}.bin"
           elif [[ "${GITHUB_REF_NAME}" == "develop" ]]; then
-            BIN_NAME="SentraMatrix-develop-${SHORT_SHA}.bin"
-            ARTIFACT_NAME="SentraMatrix-firmware-develop"
+            BIN_NAME="SentraMatrix-develop-${SHORT_SHA}-${CHIP}.bin"
           elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            BIN_NAME="SentraMatrix-main-${SHORT_SHA}.bin"
-            ARTIFACT_NAME="SentraMatrix-firmware-main"
+            BIN_NAME="SentraMatrix-main-${SHORT_SHA}-${CHIP}.bin"
           else
             SAFE_REF=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
-            BIN_NAME="SentraMatrix-${SAFE_REF}-${SHORT_SHA}.bin"
-            ARTIFACT_NAME="SentraMatrix-firmware-${SAFE_REF}"
+            BIN_NAME="SentraMatrix-${SAFE_REF}-${SHORT_SHA}-${CHIP}.bin"
           fi
 
-          cp .pio/build/nodemcuv2/firmware.bin "release/${BIN_NAME}"
+          ARTIFACT_NAME="SentraMatrix-firmware-${CHIP}"
+
+          cp .pio/build/${{ matrix.env }}/firmware.bin "release/${BIN_NAME}"
           echo "artifact_name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
-          echo "==> Prepared ${BIN_NAME}  artifact=${ARTIFACT_NAME}"
+          echo "bin_name=${BIN_NAME}" >> "$GITHUB_OUTPUT"
+          echo "==> Prepared ${BIN_NAME} under artifact ${ARTIFACT_NAME}"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.prep.outputs.artifact_name }}
-          path: release/*.bin
+          path: release/${{ steps.prep.outputs.bin_name }}
           if-no-files-found: error
 
   # ----------------------------------------------------------------
@@ -189,11 +194,15 @@ jobs:
           git push origin "${TAG}"
           echo "Created and pushed tag ${TAG}"
 
-      - name: Download firmware artifact
+      - name: Download all firmware artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.artifact_name }}
+          pattern: SentraMatrix-firmware-*
           path: release/
+          merge-multiple: true
+
+      - name: List downloaded release binaries
+        run: ls -la release/
 
       - name: Generate release notes
         id: notes
