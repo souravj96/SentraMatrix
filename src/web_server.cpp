@@ -345,6 +345,10 @@ String makeHomePage()
 
     html += "<h2>Display</h2>";
 
+    html += "Firmware: ";
+    html += FW_VERSION;
+    html += "<br>";
+
     html += "Hardware: ";
     html += hardwareName(settings.hardwareType);
     html += "<br>";

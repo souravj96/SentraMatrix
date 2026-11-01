@@ -234,7 +234,7 @@ void mqttPublishDiscovery()
     String devId = getDeviceId();
     String devName = (String(settings.mqttClientId).length() > 0) ? String(settings.mqttClientId) : "SentraMatrix";
     String cu = "http://" + WiFi.localIP().toString() + "/";
-    String devJson = "\"dev\":{\"ids\":[\"" + devId + "\"],\"name\":\"" + devName + "\",\"mf\":\"SentraMatrix\",\"mdl\":\"ESP8266 MAX7219 Clock\",\"sw\":\"1.0.0\",\"cu\":\"" + cu + "\"}";
+    String devJson = "\"dev\":{\"ids\":[\"" + devId + "\"],\"name\":\"" + devName + "\",\"mf\":\"SentraMatrix\",\"mdl\":\"ESP8266 MAX7219 Clock\",\"sw\":\"" FW_VERSION "\",\"cu\":\"" + cu + "\"}";
     String availTopic = getAvailabilityTopic();
     String availJson = "\"avty_t\":\"" + availTopic + "\",\"pl_avail\":\"online\",\"pl_not_avail\":\"offline\"";
 
@@ -340,6 +340,22 @@ void mqttPublishDiscovery()
                 "\"stat_cla\":\"measurement\","
                 "\"ent_cat\":\"diagnostic\","
                 "\"icon\":\"mdi:memory\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Firmware Version
+        {
+            String topic = "homeassistant/sensor/" + devId + "/version/config";
+            String payload = "{"
+                "\"name\":\"Firmware Version\","
+                "\"uniq_id\":\"" + devId + "_version\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.version }}\","
+                "\"ent_cat\":\"diagnostic\","
+                "\"icon\":\"mdi:chip\","
                 + availJson + ","
                 + devJson +
             "}";
@@ -663,6 +679,7 @@ void mqttPublishStatus()
 
     String payload = "{";
     payload += "\"status\":\"online\",";
+    payload += "\"version\":\"" FW_VERSION "\",";
     payload += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
     payload += "\"rssi\":" + String(WiFi.RSSI()) + ",";
     payload += "\"heap\":" + String(ESP.getFreeHeap()) + ",";

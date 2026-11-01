@@ -19,6 +19,7 @@ void setup()
     Serial.println();
     Serial.println("==============================");
     Serial.println("       SentraMatrix");
+    Serial.println("       " FW_VERSION);
     Serial.println("==============================");
 
     // --------------------------------------------------------
