@@ -45,6 +45,7 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 | Home Assistant MQTT Auto-Discovery | ✅ |
 | Quiet Hours / Night Mode | ✅ |
 | Configurable text effects (all MD_Parola effects) | ✅ |
+| OTA firmware updates (web upload + ArduinoOTA) | ✅ |
 | GitHub Actions CI — build + release on tag | ✅ |
 
 ---
@@ -101,6 +102,30 @@ pio run --target upload
 ```
 
 Or use the PlatformIO IDE's **Upload** button.
+
+### OTA (Over-the-Air) Update
+
+After the first USB flash, firmware can be updated over WiFi. An optional password can be set in the **Web UI (`/hardware` → Firmware Update)**; leave it empty for no password.
+
+**From the browser:** open `http://<device-ip>/update`, choose the `.bin` (PlatformIO output: `.pio/build/nodemcuv2/firmware.bin`) and click *Update*. If a password is set, the username is `admin`.
+
+**From PlatformIO:** passing an IP or `.local` hostname as upload port switches PlatformIO to `espota` automatically. The hostname is shown on the Hardware page (`sentramatrix-<chipid>.local`).
+
+```bash
+pio run -t upload --upload-port <device-ip>
+```
+
+With a password, add it to a local `platformio.ini` env (do not commit it):
+
+```ini
+[env:nodemcuv2_ota]
+extends = env:nodemcuv2
+upload_protocol = espota
+upload_port = <device-ip>
+upload_flags = --auth=<your-ota-password>
+```
+
+> Settings stored in EEPROM are kept across OTA updates.
 
 ### First Boot
 
@@ -253,6 +278,7 @@ SentraMatrix/
 │   ├── settings.h/.cpp     # EEPROM settings struct + load/save
 │   ├── display.h/.cpp      # MD_Parola display abstraction
 │   ├── effects.h/.cpp      # Text effect table, names, sprite data
+│   ├── ota_manager.h/.cpp  # ArduinoOTA (network upload)
 │   ├── fonts.h             # Custom clock font (bold double-line digits)
 │   ├── clock_manager.h/.cpp# NTP clock, state machine (Clock→Day→Date)
 │   ├── wifi_manager.h/.cpp # WiFi connect + AP fallback
@@ -366,11 +392,12 @@ SentraMatrix is designed for **local network use only**.
 - Persistent EEPROM settings
 - Home Assistant MQTT Auto-Discovery
 - Quiet Hours / Night Mode (Web UI & Home Assistant)
+- Configurable text effects (Web UI & Home Assistant)
+- OTA firmware updates (web upload + ArduinoOTA)
 - GitHub Actions CI + Release
 
 ### 🔮 Future Ideas
 
-- OTA firmware updates
 - Factory reset button / web trigger
 - Config backup/restore (JSON export)
 - REST API

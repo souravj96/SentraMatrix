@@ -1,6 +1,7 @@
 #include "web_server.h"
 
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WiFi.h>
 #include <MD_MAX72xx.h>
 #include <WiFiManager.h>
@@ -11,8 +12,10 @@
 #include "display.h"
 #include "wifi_manager.h"
 #include "effects.h"
+#include "ota_manager.h"
 
 ESP8266WebServer server(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 // ============================================================
 // EFFECT SELECT
@@ -656,6 +659,22 @@ String makeHardwarePage()
     html += "<option value='1'" + String(settings.invertDisplay ? " selected" : "") + ">Enabled</option>";
     html += "<option value='0'" + String(!settings.invertDisplay ? " selected" : "") + ">Disabled</option>";
     html += "</select>";
+
+    // --------------------------------------------------------
+    // FIRMWARE UPDATE (OTA)
+    // --------------------------------------------------------
+
+    html += "<br><br><h3>Firmware Update (OTA)</h3>";
+
+    html += "<label>OTA Password (empty = no password)</label>";
+    html += "<input type='password' name='otaPassword' maxlength='32' value='" + String(settings.otaPassword) + "'>";
+
+    html += "<p>Web upload: <a href='" OTA_HTTP_PATH "'>" OTA_HTTP_PATH "</a>";
+    if (strlen(settings.otaPassword) > 0)
+    {
+        html += " (user: <b>" OTA_HTTP_USER "</b>)";
+    }
+    html += "<br>Network upload (PlatformIO / Arduino IDE): <b>" + otaHostname() + ".local</b> / " + WiFi.localIP().toString() + ", port " + String(OTA_PORT) + "</p>";
 
     html += "<button type='submit'>Save & Restart</button>";
 
@@ -1371,6 +1390,10 @@ void handleSave()
         int val = server.arg("textPause").toInt();
         if (val >= 0 && val <= MAX_TEXT_PAUSE) settings.textPause = val;
     }
+    if (server.hasArg("otaPassword")) {
+        memset(settings.otaPassword, 0, sizeof(settings.otaPassword));
+        strncpy(settings.otaPassword, server.arg("otaPassword").c_str(), sizeof(settings.otaPassword) - 1);
+    }
     if (server.hasArg("invertDisplay")) {
         settings.invertDisplay = server.arg("invertDisplay").toInt() ? 1 : 0;
     }
@@ -1482,6 +1505,16 @@ void webServerInit()
         HTTP_GET,
         handleRestart
     );
+
+    // Firmware upload page (GET form + POST upload) at OTA_HTTP_PATH
+    if (strlen(settings.otaPassword) > 0)
+    {
+        httpUpdater.setup(&server, OTA_HTTP_PATH, OTA_HTTP_USER, settings.otaPassword);
+    }
+    else
+    {
+        httpUpdater.setup(&server, OTA_HTTP_PATH);
+    }
 
     server.begin();
 

@@ -19,6 +19,22 @@ void resetEffectSettings()
     settings.invertDisplay = 0;
 }
 
+void resetOtaSettings()
+{
+    settings.otaVersion = OTA_SETTINGS_VERSION;
+    memset(settings.otaPassword, 0, sizeof(settings.otaPassword));
+}
+
+static void normalizeOtaSettings()
+{
+    if (settings.otaVersion != OTA_SETTINGS_VERSION)
+    {
+        resetOtaSettings();
+        return;
+    }
+    settings.otaPassword[sizeof(settings.otaPassword) - 1] = '\0';
+}
+
 static void normalizeEffectSettings()
 {
     if (settings.effectsVersion != EFFECTS_VERSION)
@@ -84,6 +100,9 @@ void resetSettings()
 
     // Effect defaults (same behavior as before effects were configurable)
     resetEffectSettings();
+
+    // OTA defaults (no password)
+    resetOtaSettings();
 }
 
 void loadSettings()
@@ -111,6 +130,7 @@ void loadSettings()
         if (settings.quietEndHour > 23) settings.quietEndHour = 7;
         if (settings.quietBrightness > 15) settings.quietBrightness = 0;
         normalizeEffectSettings();
+        normalizeOtaSettings();
 
         Serial.println();
         Serial.println("----- Display Settings -----");

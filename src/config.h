@@ -23,6 +23,15 @@
 #define AP_PASSWORD "12345678"
 
 // ============================================================
+// OTA
+// ============================================================
+
+#define OTA_SETTINGS_VERSION 0xA1
+#define OTA_HTTP_PATH        "/update"
+#define OTA_HTTP_USER        "admin"   // Web /update username (password from settings)
+#define OTA_PORT             8266      // ArduinoOTA (espota) default port
+
+// ============================================================
 // EEPROM
 // ============================================================
 

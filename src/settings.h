@@ -56,7 +56,13 @@ struct Settings
     uint8_t effectSpeed;        // Animation frame delay in ms (lower = faster)
     uint8_t textPause;          // Seconds day/date/message stay before exit
     uint8_t invertDisplay;      // 1 = inverted pixels
-    uint8_t reserved[2];
+
+    // OTA. otaVersion marks otaPassword as initialized: on upgrade
+    // from an older layout the bytes after the old struct are
+    // undefined, so they are only trusted when the marker matches.
+    uint8_t otaVersion;
+    uint8_t reserved[1];
+    char otaPassword[33];       // Empty = OTA without password
 };
 
 extern Settings settings;
@@ -65,3 +71,4 @@ void loadSettings();
 void saveSettings();
 void resetSettings();
 void resetEffectSettings();
+void resetOtaSettings();
