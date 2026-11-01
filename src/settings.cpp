@@ -2,7 +2,41 @@
 #include <EEPROM.h>
 #include <string.h>
 
+#include "effects.h"
+
 Settings settings;
+
+void resetEffectSettings()
+{
+    settings.effectsVersion = EFFECTS_VERSION;
+    settings.clockEffect = effectIndexOf(PA_SCROLL_UP);
+    settings.dateEffectIn = effectIndexOf(PA_SCROLL_LEFT);
+    settings.dateEffectOut = effectIndexOf(PA_SCROLL_LEFT);
+    settings.messageEffectIn = effectIndexOf(PA_SCROLL_LEFT);
+    settings.messageEffectOut = effectIndexOf(PA_SCROLL_LEFT);
+    settings.effectSpeed = DEFAULT_EFFECT_SPEED;
+    settings.textPause = DEFAULT_TEXT_PAUSE;
+    settings.invertDisplay = 0;
+}
+
+static void normalizeEffectSettings()
+{
+    if (settings.effectsVersion != EFFECTS_VERSION)
+    {
+        // Upgrade from a version without effect settings
+        resetEffectSettings();
+        return;
+    }
+
+    if (!effectValidIn(settings.clockEffect)) settings.clockEffect = effectIndexOf(PA_SCROLL_UP);
+    if (!effectValidIn(settings.dateEffectIn)) settings.dateEffectIn = effectIndexOf(PA_SCROLL_LEFT);
+    if (!effectValidOut(settings.dateEffectOut)) settings.dateEffectOut = effectIndexOf(PA_SCROLL_LEFT);
+    if (!effectValidIn(settings.messageEffectIn)) settings.messageEffectIn = effectIndexOf(PA_SCROLL_LEFT);
+    if (!effectValidOut(settings.messageEffectOut)) settings.messageEffectOut = effectIndexOf(PA_SCROLL_LEFT);
+    if (settings.effectSpeed < MIN_EFFECT_SPEED || settings.effectSpeed > MAX_EFFECT_SPEED) settings.effectSpeed = DEFAULT_EFFECT_SPEED;
+    if (settings.textPause > MAX_TEXT_PAUSE) settings.textPause = DEFAULT_TEXT_PAUSE;
+    if (settings.invertDisplay > 1) settings.invertDisplay = 0;
+}
 
 void resetSettings()
 {
@@ -47,6 +81,9 @@ void resetSettings()
     settings.quietStartHour = 22; // 10 PM
     settings.quietEndHour = 7;    // 7 AM
     settings.quietBrightness = 0; // 0 = Display Off
+
+    // Effect defaults (same behavior as before effects were configurable)
+    resetEffectSettings();
 }
 
 void loadSettings()
@@ -73,6 +110,7 @@ void loadSettings()
         if (settings.quietStartHour > 23) settings.quietStartHour = 22;
         if (settings.quietEndHour > 23) settings.quietEndHour = 7;
         if (settings.quietBrightness > 15) settings.quietBrightness = 0;
+        normalizeEffectSettings();
 
         Serial.println();
         Serial.println("----- Display Settings -----");

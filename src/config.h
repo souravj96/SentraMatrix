@@ -36,5 +36,16 @@
 #define GMT_OFFSET_SEC 19800
 #define DAYLIGHT_OFFSET_SEC 0
 
+// ============================================================
+// TEXT EFFECTS
+// ============================================================
+
+#define DEFAULT_EFFECT_SPEED 50   // ms per animation frame
+#define MIN_EFFECT_SPEED     10
+#define MAX_EFFECT_SPEED     200
+#define DEFAULT_TEXT_PAUSE   0    // seconds
+#define MAX_TEXT_PAUSE       30
+#define CLOCK_EFFECT_SPEED   30   // ms per frame for the clock entry effect
+
 #define TEST_DISPLAY_TIME 1200
 #define DATE_DISPLAY_TIME 5000

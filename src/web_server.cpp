@@ -10,8 +10,40 @@
 #include "mqtt_manager.h"
 #include "display.h"
 #include "wifi_manager.h"
+#include "effects.h"
 
 ESP8266WebServer server(80);
+
+// ============================================================
+// EFFECT SELECT
+// ============================================================
+
+static void appendEffectSelect(String& html, const char* label, const char* name, uint8_t current, bool allowNone)
+{
+    html += "<label>";
+    html += label;
+    html += "</label>";
+
+    html += "<select name='";
+    html += name;
+    html += "'>";
+
+    for (uint8_t i = allowNone ? 0 : 1; i < effectCount(); i++)
+    {
+        html += "<option value='";
+        html += String(i);
+        html += "'";
+
+        if (current == i)
+            html += " selected";
+
+        html += ">";
+        html += effectName(i);
+        html += "</option>";
+    }
+
+    html += "</select>";
+}
 
 // ============================================================
 // HARDWARE NAME
@@ -600,6 +632,30 @@ String makeHardwarePage()
 
     html += "<label>Quiet Brightness (0 = Display Off, 1-15 = Dim)</label>";
     html += "<input type='number' name='quietBrightness' min='0' max='15' value='" + String(settings.quietBrightness) + "'>";
+
+    // --------------------------------------------------------
+    // TEXT EFFECTS
+    // --------------------------------------------------------
+
+    html += "<br><br><h3>Text Effects</h3>";
+
+    appendEffectSelect(html, "Clock Effect (after date/message)", "clockEffect", settings.clockEffect, false);
+    appendEffectSelect(html, "Day/Date Effect In", "dateEffectIn", settings.dateEffectIn, false);
+    appendEffectSelect(html, "Day/Date Effect Out", "dateEffectOut", settings.dateEffectOut, true);
+    appendEffectSelect(html, "Message Effect In", "messageEffectIn", settings.messageEffectIn, false);
+    appendEffectSelect(html, "Message Effect Out", "messageEffectOut", settings.messageEffectOut, true);
+
+    html += "<label>Effect Speed (ms per frame, " + String(MIN_EFFECT_SPEED) + "-" + String(MAX_EFFECT_SPEED) + ", lower = faster)</label>";
+    html += "<input type='number' name='effectSpeed' min='" + String(MIN_EFFECT_SPEED) + "' max='" + String(MAX_EFFECT_SPEED) + "' value='" + String(settings.effectSpeed) + "'>";
+
+    html += "<label>Text Pause (seconds before exit effect, 0-" + String(MAX_TEXT_PAUSE) + ")</label>";
+    html += "<input type='number' name='textPause' min='0' max='" + String(MAX_TEXT_PAUSE) + "' value='" + String(settings.textPause) + "'>";
+
+    html += "<label>Invert Display</label>";
+    html += "<select name='invertDisplay'>";
+    html += "<option value='1'" + String(settings.invertDisplay ? " selected" : "") + ">Enabled</option>";
+    html += "<option value='0'" + String(!settings.invertDisplay ? " selected" : "") + ">Disabled</option>";
+    html += "</select>";
 
     html += "<button type='submit'>Save & Restart</button>";
 
@@ -1284,6 +1340,39 @@ void handleSave()
     }
     if (server.hasArg("quietBrightness")) {
         settings.quietBrightness = server.arg("quietBrightness").toInt();
+    }
+
+    // Text effects
+    if (server.hasArg("clockEffect")) {
+        int idx = effectParse(server.arg("clockEffect"));
+        if (effectValidIn(idx)) settings.clockEffect = idx;
+    }
+    if (server.hasArg("dateEffectIn")) {
+        int idx = effectParse(server.arg("dateEffectIn"));
+        if (effectValidIn(idx)) settings.dateEffectIn = idx;
+    }
+    if (server.hasArg("dateEffectOut")) {
+        int idx = effectParse(server.arg("dateEffectOut"));
+        if (effectValidOut(idx)) settings.dateEffectOut = idx;
+    }
+    if (server.hasArg("messageEffectIn")) {
+        int idx = effectParse(server.arg("messageEffectIn"));
+        if (effectValidIn(idx)) settings.messageEffectIn = idx;
+    }
+    if (server.hasArg("messageEffectOut")) {
+        int idx = effectParse(server.arg("messageEffectOut"));
+        if (effectValidOut(idx)) settings.messageEffectOut = idx;
+    }
+    if (server.hasArg("effectSpeed")) {
+        int val = server.arg("effectSpeed").toInt();
+        if (val >= MIN_EFFECT_SPEED && val <= MAX_EFFECT_SPEED) settings.effectSpeed = val;
+    }
+    if (server.hasArg("textPause")) {
+        int val = server.arg("textPause").toInt();
+        if (val >= 0 && val <= MAX_TEXT_PAUSE) settings.textPause = val;
+    }
+    if (server.hasArg("invertDisplay")) {
+        settings.invertDisplay = server.arg("invertDisplay").toInt() ? 1 : 0;
     }
 
     saveSettings();

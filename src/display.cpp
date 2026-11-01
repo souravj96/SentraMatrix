@@ -7,6 +7,7 @@
 #include "config.h"
 #include "settings.h"
 #include "fonts.h"
+#include "effects.h"
 
 // ============================================================
 // DISPLAY OBJECT
@@ -61,6 +62,9 @@ void createDisplay()
         settings.brightness
     );
 
+    effectApplySprite(display);
+    display->setInvert(settings.invertDisplay);
+
     display->displayClear();
 
     Serial.println("MAX7219 initialized.");
@@ -106,14 +110,14 @@ void displayClock(const char* text, uint8_t effectIn, uint8_t effectOut)
     if (display == nullptr) return;
     display->setFont(clockFont);
      
-    display->displayText(text, PA_CENTER, 30, 0, static_cast<textEffect_t>(effectIn), static_cast<textEffect_t>(effectOut));
+    display->displayText(text, PA_CENTER, CLOCK_EFFECT_SPEED, 0, static_cast<textEffect_t>(effectIn), static_cast<textEffect_t>(effectOut));
 }
 
 // ============================================================
 // DATE
 // ============================================================
 
-void displayDate(const char* text)
+void displayDate(const char* text, uint8_t effectIn, uint8_t effectOut)
 {
     if (display == nullptr)
         return;
@@ -124,13 +128,30 @@ void displayDate(const char* text)
     Serial.print("DISPLAY DATE: ");
     Serial.println(text);
 
+    textEffect_t in = static_cast<textEffect_t>(effectIn);
+    textEffect_t out = static_cast<textEffect_t>(effectOut);
+
+    // Text wider than the display can only be shown entirely by
+    // scrolling: force a horizontal scroll entry in that case.
+    if (in != PA_SCROLL_LEFT && in != PA_SCROLL_RIGHT)
+    {
+        uint16_t startCol, endCol;
+        display->getDisplayExtent(startCol, endCol);
+        if (display->getTextColumns(text) > (endCol - startCol + 1))
+        {
+            in = PA_SCROLL_LEFT;
+        }
+    }
+
+    bool scrolling = (in == PA_SCROLL_LEFT || in == PA_SCROLL_RIGHT);
+
     display->displayText(
         text,
-        PA_LEFT,
-        50,
-        0,
-        PA_SCROLL_LEFT,
-        PA_SCROLL_LEFT
+        scrolling ? PA_LEFT : PA_CENTER,
+        settings.effectSpeed,
+        (uint16_t)settings.textPause * 1000,
+        in,
+        out
     );
 }
 
@@ -175,6 +196,12 @@ void displaySetPower(bool on)
 {
     if (display == nullptr) return;
     display->displayShutdown(!on);
+}
+
+void displaySetInvert(bool invert)
+{
+    if (display == nullptr) return;
+    display->setInvert(invert);
 }
 
 

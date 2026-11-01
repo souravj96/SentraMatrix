@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "clock_manager.h"
 #include "display.h"
+#include "effects.h"
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -52,6 +53,93 @@ static String getQuietEndCommandTopic()
 static String getQuietBrightnessCommandTopic()
 {
     return String(settings.mqttPubTopic) + "/quiet_brightness/set";
+}
+
+// ============================================================
+// TEXT EFFECT ENTITIES
+// ============================================================
+
+static String getCommandTopic(const char* key)
+{
+    return String(settings.mqttPubTopic) + "/" + key + "/set";
+}
+
+struct EffectSelect
+{
+    const char* key;      // MQTT topic part and status JSON key
+    const char* name;     // Home Assistant entity name
+    uint8_t* value;       // Settings field (effect table index)
+    bool allowNone;       // Exit effects may be "None"
+};
+
+static EffectSelect effectSelects[] =
+{
+    { "clock_effect",       "Clock Effect",       &settings.clockEffect,      false },
+    { "date_effect_in",     "Date Effect In",     &settings.dateEffectIn,     false },
+    { "date_effect_out",    "Date Effect Out",    &settings.dateEffectOut,    true },
+    { "message_effect_in",  "Message Effect In",  &settings.messageEffectIn,  false },
+    { "message_effect_out", "Message Effect Out", &settings.messageEffectOut, true },
+};
+
+static const uint8_t EFFECT_SELECT_COUNT = sizeof(effectSelects) / sizeof(effectSelects[0]);
+
+// Returns true if the topic was an effect command
+static bool handleEffectCommand(const String& topicStr, const String& msg)
+{
+    for (uint8_t i = 0; i < EFFECT_SELECT_COUNT; i++)
+    {
+        if (topicStr != getCommandTopic(effectSelects[i].key)) continue;
+
+        int idx = effectParse(msg);
+        bool valid = effectSelects[i].allowNone ? effectValidOut(idx) : effectValidIn(idx);
+        if (valid)
+        {
+            *effectSelects[i].value = idx;
+            saveSettings();
+            Serial.printf("MQTT updated %s to: %s\n", effectSelects[i].key, effectName(idx));
+        }
+        else
+        {
+            Serial.printf("MQTT invalid effect for %s: %s\n", effectSelects[i].key, msg.c_str());
+        }
+        mqttPublishStatus();
+        return true;
+    }
+
+    if (topicStr == getCommandTopic("effect_speed"))
+    {
+        int val = msg.toInt();
+        if (val >= MIN_EFFECT_SPEED && val <= MAX_EFFECT_SPEED)
+        {
+            settings.effectSpeed = val;
+            saveSettings();
+        }
+        mqttPublishStatus();
+        return true;
+    }
+
+    if (topicStr == getCommandTopic("text_pause"))
+    {
+        int val = msg.toInt();
+        if (val >= 0 && val <= MAX_TEXT_PAUSE)
+        {
+            settings.textPause = val;
+            saveSettings();
+        }
+        mqttPublishStatus();
+        return true;
+    }
+
+    if (topicStr == getCommandTopic("invert"))
+    {
+        settings.invertDisplay = (msg.equalsIgnoreCase("ON") || msg == "1");
+        displaySetInvert(settings.invertDisplay);
+        saveSettings();
+        mqttPublishStatus();
+        return true;
+    }
+
+    return false;
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length)
@@ -129,6 +217,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
             saveSettings();
             mqttPublishStatus();
         }
+    }
+    // Text effects, speed, pause, invert
+    else
+    {
+        handleEffectCommand(topicStr, msg);
     }
 }
 
@@ -349,6 +442,93 @@ void mqttPublishDiscovery()
         }
     }
 
+    // 6. Text Effect Entities
+    if (String(settings.mqttPubTopic).length() > 0)
+    {
+        String optionsIn = effectOptionsJson(false);
+        String optionsOut = effectOptionsJson(true);
+
+        // Effect selects
+        for (uint8_t i = 0; i < EFFECT_SELECT_COUNT; i++)
+        {
+            const EffectSelect& s = effectSelects[i];
+            String topic = "homeassistant/select/" + devId + "/" + s.key + "/config";
+            String payload = "{"
+                "\"name\":\"" + String(s.name) + "\","
+                "\"uniq_id\":\"" + devId + "_" + s.key + "\","
+                "\"cmd_t\":\"" + getCommandTopic(s.key) + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json." + s.key + " }}\","
+                "\"options\":" + (s.allowNone ? optionsOut : optionsIn) + ","
+                "\"icon\":\"mdi:animation-play\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            if (!mqttClient.publish(topic.c_str(), payload.c_str(), true))
+            {
+                Serial.printf("Discovery publish failed for %s (%u bytes)\n", s.key, payload.length());
+            }
+        }
+
+        // Effect Speed
+        {
+            String topic = "homeassistant/number/" + devId + "/effect_speed/config";
+            String payload = "{"
+                "\"name\":\"Effect Speed\","
+                "\"uniq_id\":\"" + devId + "_effect_speed\","
+                "\"cmd_t\":\"" + getCommandTopic("effect_speed") + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.effect_speed }}\","
+                "\"min\":" + String(MIN_EFFECT_SPEED) + ",\"max\":" + String(MAX_EFFECT_SPEED) + ",\"step\":5,"
+                "\"unit_of_meas\":\"ms\","
+                "\"icon\":\"mdi:speedometer\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Text Pause
+        {
+            String topic = "homeassistant/number/" + devId + "/text_pause/config";
+            String payload = "{"
+                "\"name\":\"Text Pause\","
+                "\"uniq_id\":\"" + devId + "_text_pause\","
+                "\"cmd_t\":\"" + getCommandTopic("text_pause") + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.text_pause }}\","
+                "\"min\":0,\"max\":" + String(MAX_TEXT_PAUSE) + ",\"step\":1,"
+                "\"unit_of_meas\":\"s\","
+                "\"icon\":\"mdi:timer-sand\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+
+        // Invert Display
+        {
+            String topic = "homeassistant/switch/" + devId + "/invert/config";
+            String payload = "{"
+                "\"name\":\"Invert Display\","
+                "\"uniq_id\":\"" + devId + "_invert\","
+                "\"cmd_t\":\"" + getCommandTopic("invert") + "\","
+                "\"stat_t\":\"" + String(settings.mqttPubTopic) + "\","
+                "\"val_tpl\":\"{{ value_json.invert }}\","
+                "\"pl_on\":\"ON\","
+                "\"pl_off\":\"OFF\","
+                "\"icon\":\"mdi:invert-colors\","
+                "\"ent_cat\":\"config\","
+                + availJson + ","
+                + devJson +
+            "}";
+            mqttClient.publish(topic.c_str(), payload.c_str(), true);
+        }
+    }
+
     Serial.println("Home Assistant MQTT discovery published.");
 }
 
@@ -421,6 +601,15 @@ bool mqttReconnect()
         mqttClient.subscribe(getQuietEndCommandTopic().c_str());
         mqttClient.subscribe(getQuietBrightnessCommandTopic().c_str());
 
+        // Subscribe to text effect command topics
+        for (uint8_t i = 0; i < EFFECT_SELECT_COUNT; i++)
+        {
+            mqttClient.subscribe(getCommandTopic(effectSelects[i].key).c_str());
+        }
+        mqttClient.subscribe(getCommandTopic("effect_speed").c_str());
+        mqttClient.subscribe(getCommandTopic("text_pause").c_str());
+        mqttClient.subscribe(getCommandTopic("invert").c_str());
+
         // Home Assistant Discovery
         if (settings.useHADiscovery)
         {
@@ -456,7 +645,8 @@ void mqttInit()
     Serial.println();
     Serial.println("Initializing MQTT...");
 
-    mqttClient.setBufferSize(1024);
+    // Discovery payloads of effect selects carry the full option list
+    mqttClient.setBufferSize(2048);
     mqttClient.setServer(settings.mqttBroker, settings.mqttPort);
     mqttClient.setCallback(mqttCallback);
     
@@ -481,7 +671,14 @@ void mqttPublishStatus()
     payload += "\"quiet_hours\":\"" + String(settings.quietHoursEnabled ? "ON" : "OFF") + "\",";
     payload += "\"quiet_start\":" + String(settings.quietStartHour) + ",";
     payload += "\"quiet_end\":" + String(settings.quietEndHour) + ",";
-    payload += "\"quiet_brightness\":" + String(settings.quietBrightness);
+    payload += "\"quiet_brightness\":" + String(settings.quietBrightness) + ",";
+    for (uint8_t i = 0; i < EFFECT_SELECT_COUNT; i++)
+    {
+        payload += "\"" + String(effectSelects[i].key) + "\":\"" + String(effectName(*effectSelects[i].value)) + "\",";
+    }
+    payload += "\"effect_speed\":" + String(settings.effectSpeed) + ",";
+    payload += "\"text_pause\":" + String(settings.textPause) + ",";
+    payload += "\"invert\":\"" + String(settings.invertDisplay ? "ON" : "OFF") + "\"";
     payload += "}";
 
     mqttClient.publish(settings.mqttPubTopic, payload.c_str());

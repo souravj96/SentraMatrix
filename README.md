@@ -44,6 +44,7 @@ It combines an NTP-synchronized clock, scrolling date/day display, MQTT text mes
 | Persistent settings (EEPROM) | ✅ |
 | Home Assistant MQTT Auto-Discovery | ✅ |
 | Quiet Hours / Night Mode | ✅ |
+| Configurable text effects (all MD_Parola effects) | ✅ |
 | GitHub Actions CI — build + release on tag | ✅ |
 
 ---
@@ -164,7 +165,15 @@ mosquitto_pub -h <broker-ip> -t "sentramatrix/message" -m "Hello!"
   "quiet_hours": "ON",
   "quiet_start": 22,
   "quiet_end": 7,
-  "quiet_brightness": 0
+  "quiet_brightness": 0,
+  "clock_effect": "Scroll Up",
+  "date_effect_in": "Scroll Left",
+  "date_effect_out": "Scroll Left",
+  "message_effect_in": "Scroll Left",
+  "message_effect_out": "Scroll Left",
+  "effect_speed": 50,
+  "text_pause": 0,
+  "invert": "OFF"
 }
 ```
 
@@ -179,6 +188,10 @@ SentraMatrix automatically registers itself in Home Assistant as a unified devic
 - **Quiet Start Hour (`number`)**: Start hour (0–23, e.g. `22` for 10 PM).
 - **Quiet End Hour (`number`)**: End hour (0–23, e.g. `7` for 7 AM).
 - **Quiet Brightness (`number`)**: Night brightness level (0 = Display completely powered off, 1–15 = Dim).
+- **Clock Effect / Date Effect In / Date Effect Out / Message Effect In / Message Effect Out (`select`)**: Choose any MD_Parola text effect (see [Text Effects](#-text-effects)).
+- **Effect Speed (`number`)**: Animation frame delay in ms (10–200, lower = faster).
+- **Text Pause (`number`)**: Seconds the day/date/message stays on screen before the exit effect (0–30).
+- **Invert Display (`switch`)**: Invert all pixels.
 - **Restart (`button`)**: Reboot the device remotely from Home Assistant.
 - **Sensors (`sensor`)**: Real-time WiFi Signal (RSSI), IP Address, Free Memory (Heap), and Uptime.
 - **Availability (LWT)**: Automatic online/offline status reporting via MQTT Last Will and Testament.
@@ -208,6 +221,28 @@ Quiet Hours allows you to dim or completely power down the matrix during sleepin
 
 ---
 
+## ✨ Text Effects
+
+All MD_Parola text effects can be selected from the **Web UI (`/hardware`)** and from **Home Assistant** (`select` entities). Changes from Home Assistant apply immediately, without restart.
+
+| Setting | Used for | Default |
+|---|---|---|
+| Clock Effect | Clock entry after day/date/message | Scroll Up |
+| Date Effect In / Out | Day name and date shown every minute | Scroll Left |
+| Message Effect In / Out | Incoming MQTT messages | Scroll Left |
+
+Available effects: None (exit only), Print, Scroll Up, Scroll Down, Scroll Left, Scroll Right, Sprite (pacman), Slice, Mesh, Fade, Dissolve, Blinds, Random, Wipe, Wipe Cursor, Scan Horiz, Scan HorizX, Scan Vert, Scan VertX, Opening, Opening Cursor, Closing, Closing Cursor, Scroll Up Left, Scroll Up Right, Scroll Down Left, Scroll Down Right, Grow Up, Grow Down.
+
+Effect commands can also be sent manually, using the effect name or its index:
+
+```bash
+mosquitto_pub -h <broker-ip> -t "sentramatrix/status/message_effect_in/set" -m "Fade"
+```
+
+> **Note:** text wider than the display (e.g. the date on 4 modules) can only be shown entirely by scrolling, so in that case the entry effect automatically falls back to *Scroll Left*. The exit effect is always applied.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
@@ -217,6 +252,7 @@ SentraMatrix/
 │   ├── config.h            # Compile-time constants and defaults
 │   ├── settings.h/.cpp     # EEPROM settings struct + load/save
 │   ├── display.h/.cpp      # MD_Parola display abstraction
+│   ├── effects.h/.cpp      # Text effect table, names, sprite data
 │   ├── fonts.h             # Custom clock font (bold double-line digits)
 │   ├── clock_manager.h/.cpp# NTP clock, state machine (Clock→Day→Date)
 │   ├── wifi_manager.h/.cpp # WiFi connect + AP fallback
