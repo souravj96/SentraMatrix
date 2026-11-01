@@ -119,6 +119,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
+      - name: Generate firmware version header
+        shell: bash
+        run: |
+          IS_RELEASE="${{ needs.version.outputs.is_release }}"
+          RELEASE_TAG="${{ needs.version.outputs.release_tag }}"
+
+          if [[ "${IS_RELEASE}" == "true" && -n "${RELEASE_TAG}" ]]; then
+            FW_VERSION="${RELEASE_TAG}"
+          else
+            FW_VERSION=$(git describe --tags --always 2>/dev/null || echo "${GITHUB_SHA::7}")
+          fi
+
+          printf '#pragma once\n#define FW_VERSION "%s"\n' "${FW_VERSION}" > src/version.h
+          echo "==> FW_VERSION=${FW_VERSION}"
+
       - name: Build firmware
         run: pio run
 
@@ -200,7 +215,8 @@ jobs:
         shell: bash
         run: |
           LATEST_TAG="${{ needs.version.outputs.release_tag }}"
-          PREV_TAG=$(git tag -l "v*.*.*" --sort=-v:refname | grep -v "^${LATEST_TAG}$" | head -n 1)
+          # grep exits 1 when LATEST_TAG is the only tag: do not fail under pipefail
+          PREV_TAG=$(git tag -l "v*.*.*" --sort=-v:refname | { grep -v "^${LATEST_TAG}$" || true; } | head -n 1)
 
           if [[ -z "$PREV_TAG" ]]; then
             BODY="Initial release of SentraMatrix firmware."

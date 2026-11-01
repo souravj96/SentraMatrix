@@ -43,7 +43,26 @@ struct Settings
     uint8_t quietStartHour;
     uint8_t quietEndHour;
     uint8_t quietBrightness;
-    uint8_t reserved[11];
+
+    // Text effects (MD_Parola). Effect fields store an index into
+    // the table in effects.cpp. Uses space previously reserved, so
+    // the EEPROM layout of all other fields is unchanged.
+    uint8_t effectsVersion;     // EFFECTS_VERSION when initialized
+    uint8_t clockEffect;        // Clock entry effect (after date/message)
+    uint8_t dateEffectIn;       // Day/date entry effect
+    uint8_t dateEffectOut;      // Day/date exit effect
+    uint8_t messageEffectIn;    // MQTT message entry effect
+    uint8_t messageEffectOut;   // MQTT message exit effect
+    uint8_t effectSpeed;        // Animation frame delay in ms (lower = faster)
+    uint8_t textPause;          // Seconds day/date/message stay before exit
+    uint8_t invertDisplay;      // 1 = inverted pixels
+
+    // OTA. otaVersion marks otaPassword as initialized: on upgrade
+    // from an older layout the bytes after the old struct are
+    // undefined, so they are only trusted when the marker matches.
+    uint8_t otaVersion;
+    uint8_t reserved[1];
+    char otaPassword[33];       // Empty = OTA without password
 };
 
 extern Settings settings;
@@ -51,3 +70,5 @@ extern Settings settings;
 void loadSettings();
 void saveSettings();
 void resetSettings();
+void resetEffectSettings();
+void resetOtaSettings();
