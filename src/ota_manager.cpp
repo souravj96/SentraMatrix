@@ -1,7 +1,11 @@
 #include "ota_manager.h"
 
 #include <ArduinoOTA.h>
-#include <ESP8266WiFi.h>
+#ifdef ESP32
+  #include <WiFi.h>
+#else
+  #include <ESP8266WiFi.h>
+#endif
 
 #include "config.h"
 #include "settings.h"
@@ -11,7 +15,11 @@ static bool otaStarted = false;
 
 String otaHostname()
 {
+#ifdef ESP32
+    return "sentramatrix-" + String((uint32_t)ESP.getEfuseMac(), HEX);
+#else
     return "sentramatrix-" + String(ESP.getChipId(), HEX);
+#endif
 }
 
 void otaInit()
