@@ -7,9 +7,15 @@
 // DEFAULT DISPLAY CONFIGURATION
 // ============================================================
 
-#define MATRIX_DATA_PIN D7
-#define MATRIX_CLK_PIN  D5
-#define MATRIX_CS_PIN   D4
+#ifdef ESP32
+  #define MATRIX_DATA_PIN 23
+  #define MATRIX_CLK_PIN  18
+  #define MATRIX_CS_PIN    5
+#else
+  #define MATRIX_DATA_PIN D7
+  #define MATRIX_CLK_PIN  D5
+  #define MATRIX_CS_PIN   D4
+#endif
 
 #define DEFAULT_HARDWARE_TYPE MD_MAX72XX::ICSTATION_HW
 #define DEFAULT_DEVICE_COUNT  4
