@@ -3,6 +3,7 @@
 #ifdef ESP32
   #include <WebServer.h>
   #include <WiFi.h>
+  #include <Update.h>
 #else
   #include <ESP8266WebServer.h>
   #include <ESP8266WiFi.h>
@@ -25,6 +26,66 @@ WebServer server(80);
 ESP8266WebServer server(80);
 #include <ESP8266HTTPUpdateServer.h>
 ESP8266HTTPUpdateServer httpUpdater;
+#endif
+
+#ifdef ESP32
+static void handleEsp32UpdatePage()
+{
+    if (strlen(settings.otaPassword) > 0 &&
+        !server.authenticate(OTA_HTTP_USER, settings.otaPassword))
+    {
+        return server.requestAuthentication();
+    }
+
+    server.send(200, "text/html",
+        "<!doctype html><html><body><h2>SentraMatrix firmware update</h2>"
+        "<form method='POST' action='/update' enctype='multipart/form-data'>"
+        "<input type='file' name='firmware' accept='.bin' required>"
+        "<button type='submit'>Upload</button></form></body></html>");
+}
+
+static void handleEsp32UpdateUpload()
+{
+    if (strlen(settings.otaPassword) > 0 &&
+        !server.authenticate(OTA_HTTP_USER, settings.otaPassword))
+    {
+        return server.requestAuthentication();
+    }
+
+    HTTPUpload& upload = server.upload();
+
+    if (upload.status == UPLOAD_FILE_START)
+    {
+        Serial.printf("ESP32 OTA upload started: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN))
+        {
+            Update.printError(Serial);
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_WRITE)
+    {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize)
+        {
+            Update.printError(Serial);
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_END)
+    {
+        if (Update.end(true))
+        {
+            Serial.printf("ESP32 OTA upload finished: %u bytes\n", upload.totalSize);
+        }
+        else
+        {
+            Update.printError(Serial);
+        }
+    }
+    else if (upload.status == UPLOAD_FILE_ABORTED)
+    {
+        Update.end();
+        Serial.println("ESP32 OTA upload aborted.");
+    }
+}
 #endif
 
 // ============================================================
@@ -1572,6 +1633,26 @@ void webServerInit()
     {
         httpUpdater.setup(&server, OTA_HTTP_PATH);
     }
+#else
+    server.on(OTA_HTTP_PATH, HTTP_GET, handleEsp32UpdatePage);
+    server.on(
+        OTA_HTTP_PATH,
+        HTTP_POST,
+        []()
+        {
+            if (Update.hasError())
+            {
+                server.send(500, "text/plain", "Firmware update failed.");
+            }
+            else
+            {
+                server.send(200, "text/plain", "Firmware updated. Restarting...");
+                delay(250);
+                ESP.restart();
+            }
+        },
+        handleEsp32UpdateUpload
+    );
 #endif
 
     server.begin();
