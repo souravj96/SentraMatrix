@@ -8,6 +8,7 @@
 #include "clock_manager.h"
 #include "web_server.h"
 #include "mqtt_manager.h"
+#include "ota_manager.h"
 
 void setup()
 {
@@ -18,6 +19,7 @@ void setup()
     Serial.println();
     Serial.println("==============================");
     Serial.println("       SentraMatrix");
+    Serial.println("       " FW_VERSION);
     Serial.println("==============================");
 
     // --------------------------------------------------------
@@ -73,6 +75,12 @@ void setup()
 
     webServerInit();
 
+    // --------------------------------------------------------
+    // START OTA
+    // --------------------------------------------------------
+
+    otaInit();
+
     Serial.println();
     Serial.println("SentraMatrix ready.");
 }
@@ -102,6 +110,12 @@ void loop()
     // --------------------------------------------------------
 
     mqttLoop();
+
+    // --------------------------------------------------------
+    // OTA
+    // --------------------------------------------------------
+
+    otaLoop();
 
     yield();
 }

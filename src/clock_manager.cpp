@@ -6,6 +6,7 @@
 #include "settings.h"
 #include "display.h"
 #include <MD_Parola.h>
+#include "effects.h"
 
 // ============================================================
 // STATE
@@ -237,7 +238,7 @@ void clockUpdate()
             else
             {
                 currentTime = getCurrentTime();
-                displayClock(currentTime.c_str(), PA_SCROLL_UP, PA_SCROLL_UP);
+                displayClock(currentTime.c_str(), effectValue(settings.clockEffect), PA_NO_EFFECT);
             }
             lastSecond = currentSecond;
         }
@@ -255,7 +256,7 @@ void clockUpdate()
         {
             currentState = STATE_DATE;
             currentDate = getCurrentDate();
-            displayDate(currentDate.c_str());
+            displayDate(currentDate.c_str(), effectValue(settings.dateEffectIn), effectValue(settings.dateEffectOut));
         }
         return;
     }
@@ -266,7 +267,7 @@ void clockUpdate()
         {
             currentState = STATE_CLOCK;
             currentTime = getCurrentTime();
-            displayClock(currentTime.c_str(), PA_SCROLL_UP, PA_SCROLL_UP);
+            displayClock(currentTime.c_str(), effectValue(settings.clockEffect), PA_NO_EFFECT);
             lastSecond = currentSecond;
         }
         return;
@@ -288,7 +289,7 @@ void clockUpdate()
         {
             currentState = STATE_DAY;
             currentDay = getCurrentDay();
-            displayDate(currentDay.c_str());
+            displayDate(currentDay.c_str(), effectValue(settings.dateEffectIn), effectValue(settings.dateEffectOut));
             return;
         }
         else
@@ -314,5 +315,5 @@ void clockShowMessage(const String& msg)
     currentState = STATE_MESSAGE;
     currentMessage = msg;
     displaySetPower(true);
-    displayDate(currentMessage.c_str());
+    displayDate(currentMessage.c_str(), effectValue(settings.messageEffectIn), effectValue(settings.messageEffectOut));
 }
