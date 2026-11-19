@@ -142,7 +142,6 @@ jobs:
 
       - name: Build firmware (${{ matrix.chip }})
         run: pio run -e ${{ matrix.env }}
-
       - name: Prepare firmware binary
         id: prep
         shell: bash
