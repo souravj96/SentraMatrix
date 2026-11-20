@@ -448,6 +448,17 @@ Copyright (c) 2026 Sourav Jana
 
 ---
 
+## 👥 Contributors
+
+Thanks to everyone who has helped improve SentraMatrix:
+
+- [Sourav Jana](https://github.com/souravj96)
+- [Fragolinux](https://github.com/fragolinux)
+
+See the full [contributors list](https://github.com/souravj96/SentraMatrix/graphs/contributors) for everyone who has contributed to the project.
+
+---
+
 ## ❤️ Credits
 
 - [MD_Parola](https://github.com/MajicDesigns/MD_Parola) — Marco Colli
